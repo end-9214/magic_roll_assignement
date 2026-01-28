@@ -20,6 +20,11 @@ ClientSecret = os.getenv("CLOUDFLARE_CLIENT_SECRET")
 
 # 5. Connection url
 ConnectionUrl = f"https://{AccountID}.r2.cloudflarestorage.com"
+
+# 6. Public URL
+PublicUrl = f"{os.getenv('CLOUDFLARE_PUBLIC_URL')}"
+
+
 # Initialize S3 Client
 s3_client = boto3.client(
     "s3",
@@ -41,7 +46,7 @@ def upload_file(file_name, bucket, object_name=None):
         response = s3_client.upload_file(file_name, bucket, object_name)
         print(f"File {file_name} uploaded to {bucket}/{object_name}")
         print(response)
-        return f"{os.getenv('CLOUDFLARE_PUBLIC_URL')}" + "/" + object_name
+        return f"{PublicUrl}" + "/" + object_name
     except NoCredentialsError:
         print("AWS Credentials not found")
 
