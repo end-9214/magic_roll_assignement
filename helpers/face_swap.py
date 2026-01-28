@@ -1,7 +1,8 @@
-import os
 import cv2
+import os
 import subprocess
 import logging
+from tqdm import tqdm
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
 
@@ -17,7 +18,7 @@ class FaceSwapEngine:
     ):
         self.providers = list(providers)
 
-        logger.info("Loading InsightFace models (ONCE)...")
+        logger.info("Loading InsightFace models...")
         self.app = FaceAnalysis(name="buffalo_l", providers=self.providers)
         ctx_id = -1 if any("CPUExecutionProvider" in p for p in self.providers) else 0
         self.app.prepare(ctx_id=ctx_id, det_size=det_size)
@@ -39,88 +40,66 @@ class FaceSwapEngine:
         for path in source_image_paths:
             img = cv2.imread(path)
             if img is None:
-                raise ValueError(f"Failed to load source image: {path}")
+                raise RuntimeError(f"Failed to load source image: {path}")
 
             faces = self.app.get(img)
             if not faces:
-                raise ValueError(f"No face detected in source image: {path}")
+                raise RuntimeError(f"No face detected in source image: {path}")
 
             self.src_faces.append(faces[0])
 
-        if not self.src_faces:
-            raise ValueError("No valid source faces loaded")
-
         logger.info("Loaded %d source face(s)", len(self.src_faces))
 
-    def run_ffmpeg(self, cmd):
-        subprocess.run(cmd, check=True)
-
-
-    def get_video_fps(self, video_path):
-        cmd = [
-            "ffprobe",
-            "-v", "error",
-            "-select_streams", "v:0",
-            "-show_entries", "stream=r_frame_rate",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            video_path
-        ]
-
-        result = subprocess.run(
-            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-
-        rate = result.stdout.strip()
-        if "/" in rate:
-            num, den = rate.split("/")
-            return float(num) / float(den)
-
-        return float(rate)
+    def merge_audio(self, video_no_audio, original_video, output_video):
+        subprocess.run([
+            "ffmpeg", "-y",
+            "-i", video_no_audio,
+            "-i", original_video,
+            "-map", "0:v:0",
+            "-map", "1:a?",
+            "-c:v", "copy",
+            "-c:a", "aac",
+            "-shortest",
+            output_video
+        ], check=True)
 
     def swap_video(
         self,
         input_video,
         output_video,
-        work_dir="./work",
+        temp_video="temp_noaudio.mp4"
     ):
         if not self.src_faces:
             raise RuntimeError("Source faces not loaded")
 
-        frames_dir = os.path.join(work_dir, "frames")
-        out_frames_dir = os.path.join(work_dir, "frames_out")
-        no_audio_video = os.path.join(work_dir, "video_noaudio.mp4")
+        cap = cv2.VideoCapture(input_video)
+        if not cap.isOpened():
+            raise RuntimeError("Failed to open input video")
 
-        os.makedirs(frames_dir, exist_ok=True)
-        os.makedirs(out_frames_dir, exist_ok=True)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-        fps = self.get_video_fps(input_video)
-        logger.info("Detected input FPS: %s", fps)
+        writer = cv2.VideoWriter(
+            temp_video,
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            fps,
+            (width, height)
+        )
 
-        logger.info("Extracting frames...")
-        self.run_ffmpeg([
-            "ffmpeg", "-y",
-            "-i", input_video,
-            "-vsync", "0",
-            f"{frames_dir}/frame_%06d.png"
-        ])
+        print("Processing video with InsightFace face swap...")
 
-        frame_files = sorted(os.listdir(frames_dir))
-        if not frame_files:
-            raise RuntimeError("No frames extracted")
-
-        logger.info("Swapping faces...")
-        for i, fname in enumerate(frame_files):
-            frame_path = os.path.join(frames_dir, fname)
-            frame = cv2.imread(frame_path)
-            if frame is None:
-                continue
+        for _ in tqdm(range(total_frames)):
+            ret, frame = cap.read()
+            if not ret:
+                break
 
             faces = self.app.get(frame)
-
             faces = sorted(faces, key=lambda f: f.bbox[0])
 
-            for idx, face in enumerate(faces):
-                src_face = self.src_faces[idx % len(self.src_faces)]
+            for i, face in enumerate(faces):
+                src_face = self.src_faces[i % len(self.src_faces)]
                 frame = self.swapper.get(
                     frame,
                     face,
@@ -128,35 +107,15 @@ class FaceSwapEngine:
                     paste_back=True
                 )
 
-            cv2.imwrite(os.path.join(out_frames_dir, fname), frame)
+            writer.write(frame)
 
-            if i % 50 == 0:
-                logger.debug("Processed %d/%d frames", i, len(frame_files))
+        cap.release()
+        writer.release()
 
-        logger.info("Rebuilding video...")
-        self.run_ffmpeg([
-            "ffmpeg", "-y",
-            "-framerate", str(fps),
-            "-i", f"{out_frames_dir}/frame_%06d.png",
-            "-c:v", "libx264",
-            "-pix_fmt", "yuv420p",
-            no_audio_video
-        ])
+        print("Merging audio...")
+        self.merge_audio(temp_video, input_video, output_video)
 
-        logger.info("Merging audio...")
-        self.run_ffmpeg([
-            "ffmpeg", "-y",
-            "-i", no_audio_video,
-            "-i", input_video,
-            "-map", "0:v:0",
-            "-map", "1:a?",
-            "-c:v", "copy",
-            "-c:a", "aac",
-            "-shortest",
-            output_video
-        ])
-
-        logger.info("Video processed successfully! Output: %s", output_video)
+        print("Face swap completed:", output_video)
 
 
 if __name__ == "__main__":
@@ -168,7 +127,6 @@ if __name__ == "__main__":
 
     INPUT_VIDEO = "downloads/input.mp4"
     FINAL_VIDEO = "output_video.mp4"
-    WORK_DIR = "./work"
 
     engine = FaceSwapEngine(
         swapper_model_path=SWAPPER_MODEL_PATH,
@@ -179,6 +137,5 @@ if __name__ == "__main__":
 
     engine.swap_video(
         input_video=INPUT_VIDEO,
-        output_video=FINAL_VIDEO,
-        work_dir=WORK_DIR
+        output_video=FINAL_VIDEO
     )
