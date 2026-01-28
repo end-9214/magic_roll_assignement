@@ -115,8 +115,6 @@ class FaceSwapEngine:
         print("Merging audio...")
         self.merge_audio(temp_video, input_video, output_video)
 
-        print("Face swap completed:", output_video)
-
 
 if __name__ == "__main__":
     SWAPPER_MODEL_PATH = "models/inswapper_128.onnx"

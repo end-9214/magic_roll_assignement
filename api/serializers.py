@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from django.core.files import File
 from .models import FaceImage, VideoData, OutputVideo
+
+from .utils import safe_file_url
 
 
 class FaceImageSerializer(serializers.ModelSerializer):
@@ -16,51 +17,67 @@ class OutputVideoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OutputVideo
-        fields = ("id", "status", "created_at", "face_swapped_video", "background_changed_video", "final_video")
-
-    def _url(self, field):
-        if not field:
-            return None
-        try:
-            return field.url
-        except Exception:
-            return None
+        fields = (
+            "id",
+            "status",
+            "progress",
+            "created_at",
+            "face_swapped_video",
+            "background_changed_video",
+            "final_video",
+        )
 
     def get_face_swapped_video(self, obj):
-        return self._url(obj.face_swapped_video)
+        return safe_file_url(obj.face_swapped_video)
 
     def get_background_changed_video(self, obj):
-        return self._url(obj.background_changed_video)
+        return safe_file_url(obj.background_changed_video)
 
     def get_final_video(self, obj):
-        return self._url(obj.final_video)
+        return safe_file_url(obj.final_video)
 
 
 class VideoDataCreateSerializer(serializers.ModelSerializer):
-    # accept multiple face images in a single upload (multipart form)
-    face_images = serializers.ListField(child=serializers.ImageField(), write_only=True)
+    face_images = serializers.ListField(
+        child=serializers.ImageField(),
+        write_only=True,
+    )
     background_image = serializers.ImageField(required=False, allow_null=True)
+    video_url = serializers.URLField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         model = VideoData
-        fields = ("id", "video_file", "face_images", "background_image", "created_at")
+        fields = (
+            "id",
+            "video_file",
+            "video_url",
+            "face_images",
+            "background_image",
+            "created_at",
+        )
         read_only_fields = ("id", "created_at")
 
     def create(self, validated_data):
         face_images = validated_data.pop("face_images", [])
         background_image = validated_data.pop("background_image", None)
+        video_url = validated_data.pop("video_url", None)
+        video_file = validated_data.get("video_file")
 
-        video = VideoData.objects.create(video_file=validated_data["video_file"],
-                                         background_image=background_image)
+        video = VideoData.objects.create(
+            video_file=video_file,
+            video_url=video_url,
+            background_image=background_image,
+        )
 
-        saved_faces = []
-        for img in face_images:
-            fi = FaceImage.objects.create(image_file=img)
-            saved_faces.append(fi)
-            video.face_images.add(fi)
+        for image in face_images:
+            face = FaceImage.objects.create(image_file=image)
+            video.face_images.add(face)
 
-        # create an OutputVideo record in 'queued' state; files will be filled by background worker
-        out = OutputVideo.objects.create(video_data=video, status="queued")
+        OutputVideo.objects.create(
+            video_data=video,
+            status="queued",
+            progress=0,
+        )
 
         return video
 
@@ -72,18 +89,17 @@ class VideoDataResponseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = VideoData
-        fields = ("id", "video_file", "background_image", "created_at", "output_videos")
-
-    def _url(self, field):
-        if not field:
-            return None
-        try:
-            return field.url
-        except Exception:
-            return None
+        fields = (
+            "id",
+            "video_file",
+            "video_url",
+            "background_image",
+            "created_at",
+            "output_videos",
+        )
 
     def get_video_file(self, obj):
-        return self._url(obj.video_file)
+        return safe_file_url(obj.video_file)
 
     def get_background_image(self, obj):
-        return self._url(obj.background_image)
+        return safe_file_url(obj.background_image)

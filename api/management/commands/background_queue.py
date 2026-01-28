@@ -1,69 +1,140 @@
 import os
-import shutil
-import tempfile
 import time
+import traceback
 from django.core.management.base import BaseCommand
 from django.conf import settings
 from django.core.files import File
 from api.models import OutputVideo
-from helpers.face_swap import FaceSwapEngine
+from helpers.yt_downloader import download_youtube
+from helpers.composite import FaceSwapBackgroundEngine
 
 
 class Command(BaseCommand):
-    help = "Long-running worker: process queued videos (run in background/terminal)"
+    help = "Process queued videos"
 
     def handle(self, *args, **options):
-        model_path = getattr(settings, "SWAPPER_MODEL_PATH", None)
-        if not model_path:
-            base = getattr(settings, "BASE_DIR", os.getcwd())
-            model_path = os.path.join(base, "models", "inswapper_128.onnx")
+        project_root = getattr(settings, "BASE_DIR", os.getcwd())
+        model_path = getattr(
+            settings,
+            "SWAPPER_MODEL_PATH",
+            os.path.join(project_root, "helpers", "models", "inswapper_128.onnx"),
+        )
+        fallback_background = os.path.join(project_root, "helpers", "background2.jpg")
 
-        # initialize engine once
-        try:
-            self.stdout.write("Initializing face-swap engine...")
-            engine = FaceSwapEngine(swapper_model_path=model_path, providers=("CPUExecutionProvider",))
-        except Exception as e:
-            self.stderr.write(f"Failed to initialize engine: {e}")
-            return
+        self.stdout.write("Worker running...")
 
-        self.stdout.write("Worker started, polling for queued videos...")
         while True:
-            qs = OutputVideo.objects.filter(status="queued").order_by("created_at")
-            if not qs.exists():
-                time.sleep(5)
+            pending_jobs = OutputVideo.objects.filter(status="queued").order_by(
+                "created_at"
+            )
+
+            if not pending_jobs.exists():
+                time.sleep(3)
                 continue
 
-            for ov in qs:
-                ov.status = "processing"
-                ov.save()
-                vd = ov.video_data
-
-                work_dir = tempfile.mkdtemp(prefix=f"proc_{ov.id}_")
+            for job in pending_jobs:
                 try:
-                    input_video_path = vd.video_file.path
-                    source_face_paths = [f.image_file.path for f in vd.face_images.all()]
+                    job.status = "processing"
+                    job.progress = 0
+                    job.save(update_fields=["status", "progress"])
 
-                    # load source faces for this job (fast compared to model load)
-                    engine.load_source_faces(source_face_paths)
+                    video_data = job.video_data
 
-                    final_path = os.path.join(work_dir, f"output_{ov.id}.mp4")
-                    engine.swap_video(input_video=input_video_path, output_video=final_path, work_dir=work_dir)
+                    if video_data.video_url and not video_data.video_file:
+                        try:
+                            downloaded_path = download_youtube(
+                                video_data.video_url,
+                                output_path=os.path.join(
+                                    settings.MEDIA_ROOT, "downloads"
+                                ),
+                            )
+                            if downloaded_path and os.path.exists(downloaded_path):
+                                with open(downloaded_path, "rb") as f:
+                                    video_data.video_file.save(
+                                        os.path.basename(downloaded_path),
+                                        File(f),
+                                        save=True,
+                                    )
+                        except Exception as e:
+                            job.status = "failed"
+                            job.progress = 0
+                            job.save(update_fields=["status", "progress"])
+                            self.stderr.write(f"Download failed for job {job.id}: {e}")
+                            continue
 
-                    with open(final_path, "rb") as f:
-                        django_file = File(f)
-                        ov.final_video.save(os.path.basename(final_path), django_file, save=False)
+                    if not video_data.video_file or not os.path.exists(
+                        video_data.video_file.path
+                    ):
+                        job.status = "failed"
+                        job.save(update_fields=["status"])
+                        self.stderr.write(f"Missing input video for job {job.id}")
+                        continue
 
-                    ov.status = "completed"
-                    ov.save()
-                    self.stdout.write(f"Processed OutputVideo id={ov.id}")
+                    face_paths = [
+                        face.image_file.path for face in video_data.face_images.all()
+                    ]
+                    if not face_paths:
+                        job.status = "failed"
+                        job.save(update_fields=["status"])
+                        self.stderr.write(f"No face images for job {job.id}")
+                        continue
 
-                except Exception as e:
-                    ov.status = "failed"
-                    ov.save()
-                    self.stderr.write(f"Failed id={ov.id}: {e}")
+                    background_path = (
+                        video_data.background_image.path
+                        if video_data.background_image
+                        and os.path.exists(video_data.background_image.path)
+                        else fallback_background
+                    )
 
-                finally:
+                    if not os.path.exists(background_path):
+                        job.status = "failed"
+                        job.save(update_fields=["status"])
+                        self.stderr.write(f"Background missing for job {job.id}")
+                        continue
+
+                    processing_root = os.path.join(settings.MEDIA_ROOT, "processing")
+                    os.makedirs(processing_root, exist_ok=True)
+
+                    output_name = f"processed_{video_data.id}_{int(time.time())}.mp4"
+                    temp_video_path = os.path.join(
+                        processing_root, f"temp_noaudio_{job.id}.mp4"
+                    )
+                    final_video_path = os.path.join(processing_root, output_name)
+
+                    engine = FaceSwapBackgroundEngine(
+                        swapper_model_path=str(model_path),
+                        bg_image_path=background_path,
+                        providers=("CPUExecutionProvider",),
+                    )
+
+                    engine.load_source_faces(face_paths)
+
+                    def update_progress(percent, frame_index, total_frames):
+                        job.progress = max(0, min(100, percent))
+                        job.save(update_fields=["progress"])
+
+                    engine.process_video(
+                        input_video=video_data.video_file.path,
+                        output_video=final_video_path,
+                        temp_video=temp_video_path,
+                        progress_callback=update_progress,
+                    )
+
+                    if os.path.exists(final_video_path):
+                        with open(final_video_path, "rb") as f:
+                            job.final_video.save(output_name, File(f), save=True)
+
+                    job.status = "completed"
+                    job.progress = 100
+                    job.save(update_fields=["status", "progress"])
+                    self.stdout.write(f"Completed job {job.id}")
+
+                except Exception:
                     try:
-                        shutil.rmtree(work_dir)
+                        job.status = "failed"
+                        job.save(update_fields=["status"])
                     except Exception:
                         pass
+                    traceback.print_exc()
+
+            time.sleep(1)

@@ -5,18 +5,16 @@ from rest_framework.parsers import MultiPartParser, FormParser
 
 
 from .serializers import (
-    VideoDataCreateSerializer, 
-    VideoDataResponseSerializer, 
-    OutputVideoSerializer
+    VideoDataCreateSerializer,
+    VideoDataResponseSerializer,
+    OutputVideoSerializer,
 )
-from .models import (
-    OutputVideo, 
-    VideoData
-)
+from .models import OutputVideo, VideoData
 
 
 class VideoUploadAPIView(APIView):
     parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request):
         serializer = VideoDataCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

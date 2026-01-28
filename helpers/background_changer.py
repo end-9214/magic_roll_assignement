@@ -52,7 +52,6 @@ def change_video_background_rembg(
     writer.release()
 
     print("Background replacement completed")
-    print("Output saved to:", output_video)
 
 
 if __name__ == "__main__":
