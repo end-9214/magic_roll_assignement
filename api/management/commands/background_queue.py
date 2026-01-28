@@ -19,7 +19,6 @@ class Command(BaseCommand):
             "SWAPPER_MODEL_PATH",
             os.path.join(project_root, "helpers", "models", "inswapper_128.onnx"),
         )
-        fallback_background = os.path.join(project_root, "helpers", "background2.jpg")
 
         self.stdout.write("Worker running...")
 
@@ -79,18 +78,21 @@ class Command(BaseCommand):
                         self.stderr.write(f"No face images for job {job.id}")
                         continue
 
-                    background_path = (
-                        video_data.background_image.path
-                        if video_data.background_image
-                        and os.path.exists(video_data.background_image.path)
-                        else fallback_background
-                    )
-
-                    if not os.path.exists(background_path):
-                        job.status = "failed"
-                        job.save(update_fields=["status"])
-                        self.stderr.write(f"Background missing for job {job.id}")
-                        continue
+                    #baackground is optional
+                    background_path = None
+                    if video_data.background_image:
+                        try:
+                            bg_path = video_data.background_image.path
+                            if os.path.exists(bg_path):
+                                background_path = bg_path
+                            else:
+                                self.stderr.write(
+                                    f"Background file missing for job {job.id}; continuing without background"
+                                )
+                        except Exception:
+                            self.stderr.write(
+                                f"Unable to access background for job {job.id}; continuing without background"
+                            )
 
                     processing_root = os.path.join(settings.MEDIA_ROOT, "processing")
                     os.makedirs(processing_root, exist_ok=True)
