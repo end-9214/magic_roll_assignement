@@ -1,0 +1,13 @@
+/venv
+.env
+/helpers/models/
+/helpers/work/
+/magic_roll_backend/__pycache__/
+/api/__pycache__/
+/api/migrations/__pycache__
+helpers/models/__pycache__/
+helpers/work/__pycache__/
+helpers/__pycache__/
+helpers/downloads/__pycache__/
+
+db.sqlite3

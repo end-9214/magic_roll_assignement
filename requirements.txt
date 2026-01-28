@@ -1,0 +1,13 @@
+django
+djangorestframework
+django-cors-headers
+python-dotenv
+Pillow
+requests
+gunicorn
+whitenoise
+yt-dlp
+insightface>=0.7.3
+onnxruntime # for gpu use onnxruntime-gpu
+opencv-python
+numpy<2
