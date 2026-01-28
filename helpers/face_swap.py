@@ -56,12 +56,36 @@ class FaceSwapEngine:
         subprocess.run(cmd, check=True)
 
     # --------------------------------------------------
+    def get_video_fps(self, video_path):
+        """
+        Detect original video FPS using ffprobe
+        """
+        cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=r_frame_rate",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            video_path
+        ]
+
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+
+        rate = result.stdout.strip()
+        if "/" in rate:
+            num, den = rate.split("/")
+            return float(num) / float(den)
+
+        return float(rate)
+
+    # --------------------------------------------------
     def swap_video(
         self,
         input_video,
         output_video,
         work_dir="./work",
-        fps=60
     ):
         if not self.src_faces:
             raise RuntimeError("Source faces not loaded")
@@ -73,7 +97,11 @@ class FaceSwapEngine:
         os.makedirs(frames_dir, exist_ok=True)
         os.makedirs(out_frames_dir, exist_ok=True)
 
-        # 1️⃣ Extract frames
+        # 1️⃣ Detect FPS
+        fps = self.get_video_fps(input_video)
+        print(f"🎥 Detected input FPS: {fps}")
+
+        # 2️⃣ Extract frames (AV1 safe)
         print("🎬 Extracting frames...")
         self._run_ffmpeg([
             "ffmpeg", "-y",
@@ -86,7 +114,7 @@ class FaceSwapEngine:
         if not frame_files:
             raise RuntimeError("No frames extracted")
 
-        # 2️⃣ Face swap per frame
+        # 3️⃣ Face swap per frame
         print("🔁 Swapping faces...")
         for i, fname in enumerate(frame_files):
             frame_path = os.path.join(frames_dir, fname)
@@ -96,7 +124,7 @@ class FaceSwapEngine:
 
             faces = self.app.get(frame)
 
-            # Sort faces left → right for temporal consistency
+            # Sort faces left → right for consistency
             faces = sorted(faces, key=lambda f: f.bbox[0])
 
             for idx, face in enumerate(faces):
@@ -113,7 +141,7 @@ class FaceSwapEngine:
             if i % 50 == 0:
                 print(f"Processed {i}/{len(frame_files)} frames")
 
-        # 3️⃣ Rebuild video (no audio)
+        # 4️⃣ Rebuild video (NO audio)
         print("🎞 Rebuilding video...")
         self._run_ffmpeg([
             "ffmpeg", "-y",
@@ -124,7 +152,7 @@ class FaceSwapEngine:
             no_audio_video
         ])
 
-        # 4️⃣ Merge original audio
+        # 5️⃣ Merge original audio
         print("🔊 Merging audio...")
         self._run_ffmpeg([
             "ffmpeg", "-y",
@@ -148,10 +176,6 @@ class FaceSwapEngine:
 if __name__ == "__main__":
     SWAPPER_MODEL_PATH = "models/inswapper_128.onnx"
 
-    # One face → everyone
-    # SOURCE_FACES = ["face1.jpg"]
-
-    # Multiple faces → multiple people
     SOURCE_FACES = [
         "face1.jpg"
     ]
@@ -159,7 +183,6 @@ if __name__ == "__main__":
     INPUT_VIDEO = "downloads/input.mp4"
     FINAL_VIDEO = "output_video.mp4"
     WORK_DIR = "./work"
-    FPS = 60
 
     engine = FaceSwapEngine(
         swapper_model_path=SWAPPER_MODEL_PATH,
@@ -171,6 +194,5 @@ if __name__ == "__main__":
     engine.swap_video(
         input_video=INPUT_VIDEO,
         output_video=FINAL_VIDEO,
-        work_dir=WORK_DIR,
-        fps=FPS
+        work_dir=WORK_DIR
     )
