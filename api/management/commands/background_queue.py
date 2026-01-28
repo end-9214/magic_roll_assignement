@@ -16,7 +16,7 @@ load_dotenv()
 
 
 class Command(BaseCommand):
-    help = "Process queued videos"
+    help = "process face swap background jobs in the queue"
 
     def handle(self, *args, **options):
         project_root = getattr(settings, "BASE_DIR", os.getcwd())
