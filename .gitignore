@@ -11,3 +11,6 @@ helpers/__pycache__/
 helpers/downloads/__pycache__/
 
 db.sqlite3
+
+api/management/__pycache__/
+api/management/commands/__pycache__/

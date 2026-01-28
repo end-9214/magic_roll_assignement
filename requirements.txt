@@ -13,3 +13,6 @@ opencv-python
 numpy<2
 torch
 torchvision
+logging
+rembg
+tqdm

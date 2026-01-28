@@ -1,8 +1,11 @@
 import os
 import cv2
 import subprocess
+import logging
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
+
+logger = logging.getLogger(__name__)
 
 
 class FaceSwapEngine:
@@ -14,9 +17,10 @@ class FaceSwapEngine:
     ):
         self.providers = list(providers)
 
-        print("🔹 Loading InsightFace models (ONCE)...")
+        logger.info("Loading InsightFace models (ONCE)...")
         self.app = FaceAnalysis(name="buffalo_l", providers=self.providers)
-        self.app.prepare(ctx_id=0, det_size=det_size)
+        ctx_id = -1 if any("CPUExecutionProvider" in p for p in self.providers) else 0
+        self.app.prepare(ctx_id=ctx_id, det_size=det_size)
 
         self.swapper = get_model(
             swapper_model_path,
@@ -24,11 +28,8 @@ class FaceSwapEngine:
         )
 
         self.src_faces = []
-        print("✅ Models loaded")
+        logger.info("Models loaded")
 
-    # --------------------------------------------------
-    # Load ONE or MULTIPLE source face images
-    # --------------------------------------------------
     def load_source_faces(self, source_image_paths):
         if isinstance(source_image_paths, str):
             source_image_paths = [source_image_paths]
@@ -49,17 +50,13 @@ class FaceSwapEngine:
         if not self.src_faces:
             raise ValueError("No valid source faces loaded")
 
-        print(f"✅ Loaded {len(self.src_faces)} source face(s)")
+        logger.info("Loaded %d source face(s)", len(self.src_faces))
 
-    # --------------------------------------------------
-    def _run_ffmpeg(self, cmd):
+    def run_ffmpeg(self, cmd):
         subprocess.run(cmd, check=True)
 
-    # --------------------------------------------------
+
     def get_video_fps(self, video_path):
-        """
-        Detect original video FPS using ffprobe
-        """
         cmd = [
             "ffprobe",
             "-v", "error",
@@ -80,7 +77,6 @@ class FaceSwapEngine:
 
         return float(rate)
 
-    # --------------------------------------------------
     def swap_video(
         self,
         input_video,
@@ -97,13 +93,11 @@ class FaceSwapEngine:
         os.makedirs(frames_dir, exist_ok=True)
         os.makedirs(out_frames_dir, exist_ok=True)
 
-        # 1️⃣ Detect FPS
         fps = self.get_video_fps(input_video)
-        print(f"🎥 Detected input FPS: {fps}")
+        logger.info("Detected input FPS: %s", fps)
 
-        # 2️⃣ Extract frames (AV1 safe)
-        print("🎬 Extracting frames...")
-        self._run_ffmpeg([
+        logger.info("Extracting frames...")
+        self.run_ffmpeg([
             "ffmpeg", "-y",
             "-i", input_video,
             "-vsync", "0",
@@ -114,8 +108,7 @@ class FaceSwapEngine:
         if not frame_files:
             raise RuntimeError("No frames extracted")
 
-        # 3️⃣ Face swap per frame
-        print("🔁 Swapping faces...")
+        logger.info("Swapping faces...")
         for i, fname in enumerate(frame_files):
             frame_path = os.path.join(frames_dir, fname)
             frame = cv2.imread(frame_path)
@@ -124,7 +117,6 @@ class FaceSwapEngine:
 
             faces = self.app.get(frame)
 
-            # Sort faces left → right for consistency
             faces = sorted(faces, key=lambda f: f.bbox[0])
 
             for idx, face in enumerate(faces):
@@ -139,11 +131,10 @@ class FaceSwapEngine:
             cv2.imwrite(os.path.join(out_frames_dir, fname), frame)
 
             if i % 50 == 0:
-                print(f"Processed {i}/{len(frame_files)} frames")
+                logger.debug("Processed %d/%d frames", i, len(frame_files))
 
-        # 4️⃣ Rebuild video (NO audio)
-        print("🎞 Rebuilding video...")
-        self._run_ffmpeg([
+        logger.info("Rebuilding video...")
+        self.run_ffmpeg([
             "ffmpeg", "-y",
             "-framerate", str(fps),
             "-i", f"{out_frames_dir}/frame_%06d.png",
@@ -152,9 +143,8 @@ class FaceSwapEngine:
             no_audio_video
         ])
 
-        # 5️⃣ Merge original audio
-        print("🔊 Merging audio...")
-        self._run_ffmpeg([
+        logger.info("Merging audio...")
+        self.run_ffmpeg([
             "ffmpeg", "-y",
             "-i", no_audio_video,
             "-i", input_video,
@@ -166,13 +156,9 @@ class FaceSwapEngine:
             output_video
         ])
 
-        print("🎉 Video processed successfully!")
-        print("📁 Output:", output_video)
+        logger.info("Video processed successfully! Output: %s", output_video)
 
 
-# ======================================================
-# Example usage
-# ======================================================
 if __name__ == "__main__":
     SWAPPER_MODEL_PATH = "models/inswapper_128.onnx"
 
