@@ -106,7 +106,7 @@ class Command(BaseCommand):
                     engine = FaceSwapBackgroundEngine(
                         swapper_model_path=str(model_path),
                         bg_image_path=background_path,
-                        providers=("CPUExecutionProvider",),
+                        providers=("CUDAExecutionProvider",),
                     )
 
                     engine.load_source_faces(face_paths)

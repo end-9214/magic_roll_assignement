@@ -8,11 +8,10 @@ gunicorn
 whitenoise
 yt-dlp
 insightface>=0.7.3
-onnxruntime # for gpu use onnxruntime-gpu
+onnxruntime-gpu # for gpu use onnxruntime-gpu
 opencv-python
 numpy<2
 torch
 torchvision
-logging
 rembg
 tqdm
