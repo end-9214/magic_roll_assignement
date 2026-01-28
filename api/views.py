@@ -9,10 +9,10 @@ from .serializers import (
     VideoDataResponseSerializer,
     OutputVideoSerializer,
 )
-from .models import OutputVideo, VideoData
+from .models import OutputVideo
 
 
-class VideoUploadAPIView(APIView):
+class VideoUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
@@ -23,10 +23,17 @@ class VideoUploadAPIView(APIView):
         return Response(resp.data, status=status.HTTP_201_CREATED)
 
 
-class OutputVideoDetailAPIView(APIView):
+class OutputVideoDetailView(APIView):
     def get(self, request, pk):
         obj = OutputVideo.objects.filter(pk=pk).first()
         if not obj:
             return Response({"detail": "Not found"}, status=status.HTTP_404_NOT_FOUND)
         serializer = OutputVideoSerializer(obj, context={"request": request})
+        return Response(serializer.data)
+
+
+class ListAllVideosView(APIView):
+    def get(self, request):
+        videos = OutputVideo.objects.all().order_by("-created_at")
+        serializer = OutputVideoSerializer(videos, many=True, context={"request": request})
         return Response(serializer.data)

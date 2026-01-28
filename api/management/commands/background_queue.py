@@ -8,6 +8,12 @@ from api.models import OutputVideo
 from helpers.yt_downloader import download_youtube
 from helpers.composite import FaceSwapBackgroundEngine
 
+import uuid
+from helpers.cloudflare_CRUD import upload_file
+from dotenv import load_dotenv
+
+load_dotenv()
+
 
 class Command(BaseCommand):
     help = "Process queued videos"
@@ -20,7 +26,7 @@ class Command(BaseCommand):
             os.path.join(project_root, "helpers", "models", "inswapper_128.onnx"),
         )
 
-        self.stdout.write("Worker running...")
+        self.stdout.write("Worker is running, we can start sending video requests :D")
 
         while True:
             pending_jobs = OutputVideo.objects.filter(status="queued").order_by(
@@ -125,6 +131,16 @@ class Command(BaseCommand):
                     if os.path.exists(final_video_path):
                         with open(final_video_path, "rb") as f:
                             job.final_video.save(output_name, File(f), save=True)
+
+                        job_uuid = str(uuid.uuid4())
+                        cloudflare_object_name = f"{job_uuid}/{job_uuid}.mp4"
+                        cloudflare_url = upload_file(
+                            final_video_path,
+                            os.getenv("CLOUDFLARE_BUCKET_NAME"),
+                            cloudflare_object_name
+                        )
+                        job.final_video_url = cloudflare_url
+                        job.save(update_fields=["final_video_url"])
 
                     job.status = "completed"
                     job.progress = 100

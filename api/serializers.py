@@ -11,9 +11,8 @@ class FaceImageSerializer(serializers.ModelSerializer):
 
 
 class OutputVideoSerializer(serializers.ModelSerializer):
-    face_swapped_video = serializers.SerializerMethodField()
-    background_changed_video = serializers.SerializerMethodField()
     final_video = serializers.SerializerMethodField()
+    final_video_url = serializers.URLField(read_only=True)
 
     class Meta:
         model = OutputVideo
@@ -22,16 +21,9 @@ class OutputVideoSerializer(serializers.ModelSerializer):
             "status",
             "progress",
             "created_at",
-            "face_swapped_video",
-            "background_changed_video",
             "final_video",
+            "final_video_url",
         )
-
-    def get_face_swapped_video(self, obj):
-        return safe_file_url(obj.face_swapped_video)
-
-    def get_background_changed_video(self, obj):
-        return safe_file_url(obj.background_changed_video)
 
     def get_final_video(self, obj):
         return safe_file_url(obj.final_video)
@@ -103,3 +95,25 @@ class VideoDataResponseSerializer(serializers.ModelSerializer):
 
     def get_background_image(self, obj):
         return safe_file_url(obj.background_image)
+
+
+class ListVideosSerializers(serializers.ModelSerializer):
+    output_videos = OutputVideoSerializer(many=True)
+    progress = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VideoData
+        fields = (
+            "id",
+            "video_file",
+            "video_url",
+            "created_at",
+            "output_videos",
+            "progress",
+        )
+
+    def get_progress(self, obj):
+        latest_output = obj.output_videos.order_by("-created_at").first()
+        if latest_output:
+            return latest_output.progress
+        return 0

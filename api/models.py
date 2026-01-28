@@ -26,16 +26,11 @@ class OutputVideo(models.Model):
     video_data = models.ForeignKey(
         VideoData, on_delete=models.CASCADE, related_name="output_videos"
     )
-    face_swapped_video = models.FileField(
-        upload_to="swapped_videos/", null=True, blank=True
-    )
-    background_changed_video = models.FileField(
-        upload_to="background_changed_videos/", null=True, blank=True
-    )
     audio_extracted = models.FileField(
         upload_to="extracted_audios/", null=True, blank=True
     )
     final_video = models.FileField(upload_to="output_videos/", null=True, blank=True)
+    final_video_url = models.URLField(max_length=500, null=True, blank=True)
     status = models.CharField(max_length=50, default="queued", choices=STATUS_CHOICES)
     progress = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

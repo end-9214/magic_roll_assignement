@@ -1,0 +1,76 @@
+{
+	"info": {
+		"_postman_id": "e58b588c-37d2-464d-b377-386d91827f19",
+		"name": "magic_roll_assignement",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "45686687",
+		"_collection_link": "https://end-9147434.postman.co/workspace/end's-Workspace~612adb98-3b63-4fb2-89cb-5fef8c29d86a/collection/45686687-e58b588c-37d2-464d-b377-386d91827f19?action=share&source=collection_link&creator=45686687"
+	},
+	"item": [
+		{
+			"name": "See all Videos",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/outputs/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"outputs",
+						""
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "See details of a Video",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		},
+		{
+			"name": "Generate Video",
+			"request": {
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "formdata",
+					"formdata": [
+						{
+							"key": "video_url",
+							"value": "https://www.youtube.com/shorts/PynypZ8iBvU",
+							"type": "text"
+						},
+						{
+							"key": "face_images",
+							"type": "file",
+							"src": "WWC5ZCOIA/face.jpg"
+						}
+					]
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/videos/",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"videos",
+						""
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
