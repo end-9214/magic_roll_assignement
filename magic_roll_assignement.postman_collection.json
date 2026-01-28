@@ -13,15 +13,14 @@
 				"method": "GET",
 				"header": [],
 				"url": {
-					"raw": "http://localhost:8000/api/outputs/",
-					"protocol": "http",
+					"raw": "{{url_of_deployment}}/api/videos/list/",
 					"host": [
-						"localhost"
+						"{{url_of_deployment}}"
 					],
-					"port": "8000",
 					"path": [
 						"api",
-						"outputs",
+						"videos",
+						"list",
 						""
 					]
 				}
@@ -32,7 +31,20 @@
 			"name": "See details of a Video",
 			"request": {
 				"method": "GET",
-				"header": []
+				"header": [],
+				"url": {
+					"raw": "{{url_of_deployment}}/api/videos/details/1/",
+					"host": [
+						"{{url_of_deployment}}"
+					],
+					"path": [
+						"api",
+						"videos",
+						"details",
+						"1",
+						""
+					]
+				}
 			},
 			"response": []
 		},
@@ -52,17 +64,15 @@
 						{
 							"key": "face_images",
 							"type": "file",
-							"src": "WWC5ZCOIA/face.jpg"
+							"src": "/C:/Users/Badno/Downloads/face.jpg"
 						}
 					]
 				},
 				"url": {
-					"raw": "http://localhost:8000/api/videos/",
-					"protocol": "http",
+					"raw": "{{url_of_deployment}}/api/videos/",
 					"host": [
-						"localhost"
+						"{{url_of_deployment}}"
 					],
-					"port": "8000",
 					"path": [
 						"api",
 						"videos",
