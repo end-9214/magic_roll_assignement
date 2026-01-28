@@ -6,6 +6,7 @@ from tqdm import tqdm
 from rembg import new_session, remove
 from insightface.app import FaceAnalysis
 from insightface.model_zoo import get_model
+import onnxruntime as ort
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("FaceSwapBackgroundEngine")
@@ -16,11 +17,21 @@ class FaceSwapBackgroundEngine:
         self,
         swapper_model_path,
         bg_image_path=None,
-        providers=("CPUExecutionProvider",),
+        providers=None,
         det_size=(640, 640),
         rembg_model="isnet-general-use",
     ):
-        self.providers = list(providers)
+        if providers is None:
+            available = ort.get_available_providers()
+            if "CUDAExecutionProvider" in available:
+                self.providers = ["CUDAExecutionProvider", "CPUExecutionProvider"]
+                log.info("CUDA detected, using GPU")
+            else:
+                self.providers = ["CPUExecutionProvider"]
+                log.info("CUDA not available, using CPU")
+        else:
+            self.providers = list(providers)
+            log.info("Using providers: %s", self.providers)
 
         self.background_enabled = bg_image_path is not None
         self.background_image = None
@@ -33,12 +44,11 @@ class FaceSwapBackgroundEngine:
         else:
             log.info("Background replacement disabled")
 
-        log.info("Loading face detection and swap models")
+        ctx_id = 0 if "CUDAExecutionProvider" in self.providers else -1
+
+        log.info("Loading InsightFace models")
         self.face_app = FaceAnalysis(name="buffalo_l", providers=self.providers)
-        context_id = (
-            -1 if any("CPUExecutionProvider" in p for p in self.providers) else 0
-        )
-        self.face_app.prepare(ctx_id=context_id, det_size=det_size)
+        self.face_app.prepare(ctx_id=ctx_id, det_size=det_size)
 
         self.face_swapper = get_model(
             swapper_model_path,
@@ -183,7 +193,6 @@ if __name__ == "__main__":
     processor = FaceSwapBackgroundEngine(
         swapper_model_path=MODEL_PATH,
         bg_image_path=None,
-        providers=("CPUExecutionProvider",),
     )
 
     processor.load_source_faces(SOURCE_IMAGES)
