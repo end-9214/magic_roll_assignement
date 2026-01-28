@@ -16,3 +16,4 @@ torchvision
 rembg
 tqdm
 boto3
+streamlit
