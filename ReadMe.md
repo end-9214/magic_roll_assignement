@@ -99,21 +99,26 @@ streamlit run app.py
 * but if i got more time i could use videos for backgrounds as that might just be one short process of reading the backgrund video also frame by frame and overlaying the foreground frame on that background frame and if background video is short we loop it again and if its long we trim it to match the forground video.
 
 ### 8. Architecture -
-flowchart LR
-    UI[Streamlit UI]
-    API[Django API]
-    DB[(Database)]
-    WORKER[Background Worker]
-    AI[AI Processing<br/>(Face Swap + Background)]
-    OUT[Final Video]
-
-    UI --> API
-    API --> DB
-    DB --> WORKER
-    WORKER --> AI
-    AI --> OUT
-    OUT --> DB
-    API --> UI
+Streamlit UI
+     |
+     v
+Django REST API
+     |
+     v
+Database (Video Jobs)
+     |
+     v
+Background Worker (Queue)
+     |
+     v
+AI Processing
+(Face Swap + Background Replace)
+     |
+     v
+Final Video (FFmpeg + Audio)
+     |
+     v
+Cloudflare R2 (Public URL)
 
 
 
