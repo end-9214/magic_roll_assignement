@@ -2,6 +2,8 @@
 An end-to-end  video content automation pipeline that takes viral videos as input, 
 transforms them using AI (face/background replacement), and prepares them for publishing.
 
+* I have tested this on Python 3.11
+
 ## Steps to get started -
 ### 1. create a new python environment 
 ```
@@ -43,7 +45,7 @@ python manage.py runserver
 python manage.py background_queue
 ```
 
->> you can import the postman collection into postman to start directly using the endpoints. or integrate them else where.
+> you can import the postman collection into postman to start directly using the endpoints. or integrate them else where.
 
 ### 6. start the streamlit app and start transforming videos :D
 ```
@@ -59,7 +61,7 @@ streamlit run app.py
 ### 1. Youtube Video downloader
 1. Takes a YT video link.
 2. Uses `yt-dlp` to download the video.
->> reference : `https://www.bing.com/videos/riverview/relatedvideo?q=yt+dlp+python+tutorial&&mid=4C91EA38076ADE46C4C04C91EA38076ADE46C4C0&FORM=VAMGZC`
+> reference : `https://www.bing.com/videos/riverview/relatedvideo?q=yt+dlp+python+tutorial&&mid=4C91EA38076ADE46C4C04C91EA38076ADE46C4C0&FORM=VAMGZC`
 
 ### 2. AI part - Face Swapping and Background changing
 1.  we first give our video, Face images, and background(optional)
@@ -87,3 +89,9 @@ streamlit run app.py
 
 ### 5. Backup 
 >>> i created separate use cases of the face swapper and background changer for testing and saved them in the backup folder.
+
+### references
+1. for craeting django commands - https://www.geeksforgeeks.org/python/custom-django-management-commands/
+2. For using Swapper i used references from this repo - https://github.com/haofanwang/inswapper/blob/main/swapper.py
+3. I had already used rembg for photos and used references from this - https://github.com/danielgatis/rembg
+4. this also comes in handy - https://dev.to/soldatov-ss/part-1-django-rest-framework-when-and-when-not-to-override-serializers-and-viewsets-11a7
