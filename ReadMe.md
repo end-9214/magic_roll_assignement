@@ -103,7 +103,8 @@ streamlit run app.py
 ### 8. Architecture -
 ![Architecture Diagram](/architecture/archi.PNG)
 
-
+### 9. Demo video link -
+![link]https://github.com/end-9214/magic_roll_assignement/blob/main/demo/demo_video/demo_video.mp4
 
 ### references
 1. for craeting django commands - https://www.geeksforgeeks.org/python/custom-django-management-commands/
