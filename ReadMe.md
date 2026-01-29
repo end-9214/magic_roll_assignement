@@ -99,7 +99,7 @@ streamlit run app.py
 * but if i got more time i could use videos for backgrounds as that might just be one short process of reading the backgrund video also frame by frame and overlaying the foreground frame on that background frame and if background video is short we loop it again and if its long we trim it to match the forground video.
 
 ### 8. Architecture -
-
+![Architecture Diagram](/architecture/archi.PNG)
 
 
 
