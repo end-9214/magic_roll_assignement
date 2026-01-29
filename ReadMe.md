@@ -88,7 +88,7 @@ streamlit run app.py
 2. 2nd tab is for showing results and past jobs too.
 
 ### 5. Backup 
->>> i created separate use cases of the face swapper and background changer for testing and saved them in the backup folder.
+> i created separate use cases of the face swapper and background changer for testing and saved them in the backup folder.
 
 ### references
 1. for craeting django commands - https://www.geeksforgeeks.org/python/custom-django-management-commands/
