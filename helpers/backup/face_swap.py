@@ -88,7 +88,7 @@ class FaceSwapEngine:
             (width, height)
         )
 
-        print("Processing video with InsightFace face swap...")
+        logger.info("Processing video with InsightFace face swap...")
 
         for _ in tqdm(range(total_frames)):
             ret, frame = cap.read()
@@ -112,7 +112,7 @@ class FaceSwapEngine:
         cap.release()
         writer.release()
 
-        print("Merging audio...")
+        logger.info("Merging audio...")
         self.merge_audio(temp_video, input_video, output_video)
 
 

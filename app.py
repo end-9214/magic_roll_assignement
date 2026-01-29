@@ -25,12 +25,12 @@ def fetch_videos_list():
     return []
 
 
-st.title("Magic Roll Assignment")
-st.write("welcome to face swapper and background changer! :D")
-tab1, tab2 = st.tabs(["Generate Video", "View Videos List"])
+st.title("AI Video Transformation Pipeline")
+st.write("welcome! :D")
+tab1, tab2 = st.tabs(["Transform Video", "View Videos List"])
 
 with tab1:
-    st.header("Generate Video")
+    st.header("Transform Video")
     youtube_link = st.text_input("Enter YouTube Video Link:")
     face_images = st.file_uploader("Upload Face Images:", type=["png", "jpg", "jpeg"], accept_multiple_files=True)
     bg_image = st.file_uploader("Upload Background Image:", type=["png", "jpg", "jpeg"])
@@ -69,14 +69,14 @@ with tab1:
                 st.error("Failed to start video processing.")
 
 with tab2:
-    st.header("Videos List")
+    st.header("Transformed Videos List")
 
     if st.button("Refresh Video List"):
         st.session_state.videos = fetch_videos_list()
 
     if st.session_state.videos:
         video_map = {
-            f"ID: {v['id']} | Status: {v['status']}": v["id"]
+            f"ID: {v['id']} | Status: {v['status']} | Progress: {v['progress']}%": v["id"] 
             for v in st.session_state.videos
         }
 
