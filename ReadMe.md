@@ -81,7 +81,7 @@ streamlit run app.py
 1. we created necessary models to store video data, face image and output video data in the database.
 2. we created necessary nested serializers and Views and we made minimal views only for parsing the requests and we made the main logic in serializers - for creation logic like overriding the create() to pop fields and create Video data, creating face image instances and linking them. We also created helper functions to return final video file URL.
 3. We created a django management command that will run continously and process the outputvideo jobs in the database. we first poll the OutputVideo objects to get the objects with status == "queued" (oldest first) and for each job we change status to "processing", prepare inputs like face images, video file, background image and run the transformation engine (includes both face swap and background changer) and save results and these saved results in the end are uploaded to cloudflare and its public url is saved in the database.
-4. Creation of output job is done in services.
+4. Creation of output video job is done in services.
 
 
 ### 4. Streamlit app -
