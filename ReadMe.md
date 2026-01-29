@@ -90,6 +90,33 @@ streamlit run app.py
 ### 5. Backup 
 > i created separate use cases of the face swapper and background changer for testing and saved them in the backup folder.
 
+### 6. Trade offs 
+* `inswapper_128.onnx` does fully model these things like ears, hair and sometimes it even overlays the face over hands and any objects that comes infront of the face.
+* `isnet` its great for single images, but in videos its causing edge flicker. 
+
+### 7. How close you think your output is to being indistinguishable from a real, unedited video?
+* right now it looks 100% edited as for background changer i have just used an image and images are static.
+* but if i got more time i could use videos for backgrounds as that might just be one short process of reading the backgrund video also frame by frame and overlaying the foreground frame on that background frame and if background video is short we loop it again and if its long we trim it to match the forground video.
+
+### 8. Architecture -
+flowchart LR
+    UI[Streamlit UI]
+    API[Django API]
+    DB[(Database)]
+    WORKER[Background Worker]
+    AI[AI Processing<br/>(Face Swap + Background)]
+    OUT[Final Video]
+
+    UI --> API
+    API --> DB
+    DB --> WORKER
+    WORKER --> AI
+    AI --> OUT
+    OUT --> DB
+    API --> UI
+
+
+
 ### references
 1. for craeting django commands - https://www.geeksforgeeks.org/python/custom-django-management-commands/
 2. For using Swapper i used references from this repo - https://github.com/haofanwang/inswapper/blob/main/swapper.py
