@@ -65,12 +65,6 @@ class VideoDataCreateSerializer(serializers.ModelSerializer):
             face = FaceImage.objects.create(image_file=image)
             video.face_images.add(face)
 
-        OutputVideo.objects.create(
-            video_data=video,
-            status="queued",
-            progress=0,
-        )
-
         return video
 
 

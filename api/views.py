@@ -10,15 +10,17 @@ from .serializers import (
     OutputVideoSerializer,
 )
 from .models import OutputVideo
+from .services import create_output_job
 
 
 class VideoUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
-        serializer = VideoDataCreateSerializer(data=request.data)
+        serializer = VideoDataCreateSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
         video = serializer.save()
+        create_output_job(video)
         resp = VideoDataResponseSerializer(video, context={"request": request})
         return Response(resp.data, status=status.HTTP_201_CREATED)
 
