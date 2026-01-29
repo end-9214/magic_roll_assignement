@@ -26,7 +26,7 @@ pip install -r requirements.txt
 ```
 
 ### 4. Download the inswapper model
->> this inswapper model is to be saved in `/helpers/models/inswapper_128.onnx`
+> this inswapper model is to be saved in `/helpers/models/inswapper_128.onnx` because diffusion based models are slow and inswapper was preety fast even on cpu.
 
 ```powershell
 cd helpers
@@ -70,7 +70,7 @@ streamlit run app.py
 4. now we load the background removal model - here we have used rembg's `isnet-general-use` model; what it does is - it separates a foreground person from the background and then changes the background with transparent. I previously used it in Professional Photoshoot of products at artizence and thought we can also use it here and it was quite okay.
 5. Now is the main loop part -
    * we first detect the fame rate of the video so that its accurate for us to read how fast the video is. this is because if we set a default fps the video will look slow or might get faster. we also detect width and height so that every frame is of same size and height. and our video writer needs these for creating a valid video file and avoiding stretching and broken frames.And we counted total frames so that we can manage loop, show percentage and know when the video ends.
-   * now we read the first frame of the video using `CV2` -> we let our `buffalo_1` model to detect faces in that frame, it detects where the face is, its angle and facial landmarks. Now for each detected face we take a source file (face image) and matches the face angle, expression, pose and size. Now face swapping is done using `inswapper_128` model. we move to background removal - `isnet-general-use` model detects foreground and background and we remove the background and transparent background is created. Now we add a new background to that frame - we use numpy and opencv for this - we resize the background image to the video size and then foreground person is placed on the background. 
+   * now we read the first frame of the video using `CV2` -> we let our `buffalo_l` model to detect faces in that frame, it detects where the face is, its angle and facial landmarks. Now for each detected face we take a source file (face image) and matches the face angle, expression, pose and size. Now face swapping is done using `inswapper_128` model. we move to background removal - `isnet-general-use` model detects foreground and background and we remove the background and transparent background is created. Now we add a new background to that frame - we use numpy and opencv for this - we resize the background image to the video size and then foreground person is placed on the background. 
    * Now after the above process we save the frame and this frame is written into a new file. using opencv Videowriter. and in this video theres no audio yet because open cv only handle video and not audio. audio is ignored during frame processing. 
    * we move to the next frame and this same loop is repeated till the last frame.
    * now when every frame is processed successfully - we use `ffmpeg` to restore the audio - we extract the audio from the original video and merge it into the processed audio. 
@@ -97,6 +97,8 @@ streamlit run app.py
 ### 7. How close you think your output is to being indistinguishable from a real, unedited video?
 * right now it looks 100% edited as for background changer i have just used an image and images are static.
 * but if i got more time i could use videos for backgrounds as that might just be one short process of reading the backgrund video also frame by frame and overlaying the foreground frame on that background frame and if background video is short we loop it again and if its long we trim it to match the forground video.
+
+* without face swap it will be preety hard to guess if the video is edited or not.
 
 ### 8. Architecture -
 ![Architecture Diagram](/architecture/archi.PNG)
